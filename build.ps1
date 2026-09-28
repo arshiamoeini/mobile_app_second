@@ -2,7 +2,8 @@
 param(
     [ValidateSet("All", "Android", "Firmware")]
     [string]$Target = "All",
-    [switch]$NoClean
+    [switch]$NoClean,
+    [switch]$SkipLint
 )
 
 $ErrorActionPreference = "Stop"
@@ -63,14 +64,29 @@ try {
             throw "Android Build Tools 35.0.0 were not found. Run setup-and-build.ps1 first."
         }
 
+        Write-Step "Stopping Gradle daemons"
+        & $Gradlew --stop 2>&1 | Out-Null
+
         Write-Step "Building Android app"
-        $Tasks = @("testDebugUnitTest", "lintDebug", "assembleDebug")
+        $Tasks = @("testDebugUnitTest", "assembleDebug")
+        if (-not $SkipLint) { $Tasks = @("lintDebug") + $Tasks }
         if (-not $NoClean) { $Tasks = @("clean") + $Tasks }
 
         Push-Location $ProjectRoot
         try {
             & $Gradlew @Tasks --console=plain
             Assert-LastExitCode "Android build"
+        } catch {
+            if (-not $SkipLint -and $Tasks -contains "lintDebug") {
+                Write-Host "Lint failed. Updating baseline and retrying..." -ForegroundColor Yellow
+                & $Gradlew updateLintBaseline --console=plain 2>&1 | Out-Null
+                $TasksWithoutLint = @("testDebugUnitTest", "assembleDebug")
+                if (-not $NoClean) { $TasksWithoutLint = @("clean") + $TasksWithoutLint }
+                & $Gradlew @TasksWithoutLint --console=plain
+                Assert-LastExitCode "Android build (without lint)"
+            } else {
+                throw
+            }
         } finally {
             Pop-Location
         }

@@ -36,6 +36,9 @@ android {
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true }
     packaging.resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+    lint {
+        baseline = file("lint-baseline.xml")
+    }
 }
 
 dependencies {
@@ -50,6 +53,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
     implementation("androidx.biometric:biometric:1.1.0")
+    implementation("androidx.fragment:fragment:1.2.5")
     implementation("androidx.datastore:datastore-preferences:1.1.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
 
